@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 최가영 카렌다</title>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans+Mono:wght@400;500;600&family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --bg:#14110e; --panel:#1d1916; --panel2:#252019; --line:#3a322a;
+    --ink:#ede6db; --ink-dim:#9a8e7d; --ink-faint:#6b6155;
+    --ydp:#d98a3d; --pier2:#c5453a; --songeun:#6fa3a0; --mihak:#b88bb0;
+    --shinchon:#e0b94a; --field:#7d9a5b; --news:#5a7a9e; --pub:#c9a86a; --etc:#7e8a99;
+  }
+  body { background:var(--bg); color:var(--ink); font-family:'Spline Sans Mono',monospace;
+    line-height:1.5; padding:28px 20px 80px; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1100px; margin:0 auto; }
+  header { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap;
+    gap:12px; border-bottom:1px solid var(--line); padding-bottom:18px; margin-bottom:8px; }
+  h1 { font-family:'Gowun Batang',serif; font-weight:700; font-size:25px; letter-spacing:-0.01em; }
+  h1 .sub { display:block; font-family:'Spline Sans Mono',monospace; font-weight:400; font-size:11px;
+    color:var(--ink-faint); letter-spacing:0.08em; margin-top:6px; text-transform:uppercase; }
+  .today { font-size:12px; color:var(--ink-dim); text-align:right; }
+  .today b { color:var(--ydp); font-weight:600; }
+  .next-dday { color:var(--ink-dim); }
+  .etc-count-row { display:flex; align-items:center; gap:7px; font-size:11.5px;
+    color:var(--ink-faint); margin:-8px 0 20px; padding-left:2px; }
+  .etc-dot { width:8px; height:8px; border-radius:50%; background:var(--etc); flex-shrink:0; }
+  .progress-strip { display:flex; align-items:center; gap:14px; margin:22px 0 14px;
+    font-size:12px; color:var(--ink-dim); }
+  .bar { flex:1; height:6px; background:var(--panel2); border-radius:3px; overflow:hidden; }
+  .bar-fill { height:100%; background:linear-gradient(90deg,var(--field),var(--ydp));
+    width:0%; transition:width .4s ease; }
+  .proj-progress { display:flex; flex-wrap:wrap; gap:10px 18px; margin-bottom:22px;
+    padding:14px 16px; background:var(--panel); border:1px solid var(--line); border-radius:10px; }
+  .pp-item { display:flex; align-items:center; gap:8px; font-size:11px; min-width:150px; flex:1; }
+  .pp-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .pp-name { color:var(--ink-dim); white-space:nowrap; }
+  .pp-bar { display:block; flex:1; height:4px; background:var(--panel2); border-radius:2px; overflow:hidden; min-width:40px; }
+  .pp-fill { display:block; height:100%; border-radius:2px; transition:width .4s ease; }
+  .pp-num { color:var(--ink-faint); white-space:nowrap; font-size:10px; }
+  .toolbar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;
+    gap:10px; margin-bottom:18px; position:sticky; top:0; z-index:50;
+    background:linear-gradient(var(--bg) 78%, transparent); padding:10px 0; }
+  .filters { display:flex; flex-wrap:wrap; gap:7px; }
+  .chip { font-family:inherit; font-size:11px; color:var(--ink-dim); background:var(--panel);
+    border:1px solid var(--line); padding:5px 11px; border-radius:20px; cursor:pointer;
+    transition:all .15s; display:flex; align-items:center; gap:6px; }
+  .chip:hover { color:var(--ink); border-color:var(--ink-faint); }
+  .chip.off { opacity:.32; }
+  .chip .dd { color:var(--ink-faint); font-size:10px; }
+  .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .right-tools { display:flex; gap:8px; align-items:center; }
+  .past-toggle { font-family:inherit; font-size:11px; color:var(--ink-dim); background:var(--panel);
+    border:1px solid var(--line); padding:6px 12px; border-radius:8px; cursor:pointer; }
+  .past-toggle:hover { color:var(--ink); border-color:var(--ink-faint); }
+  .past-toggle.on { color:var(--ydp); border-color:var(--ydp); }
+  .view-toggle { display:flex; gap:0; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .view-toggle button { font-family:inherit; font-size:11px; color:var(--ink-dim); background:var(--panel);
+    border:none; padding:6px 14px; cursor:pointer; }
+  .view-toggle button.active { background:var(--ydp); color:var(--bg); font-weight:600; }
+  .add-btn { position:fixed; top:20px; right:20px; z-index:90;
+    font-family:inherit; font-size:13px; color:var(--bg); background:var(--ydp);
+    border:none; padding:10px 17px; border-radius:24px; cursor:pointer; font-weight:600;
+    box-shadow:0 4px 16px rgba(0,0,0,.4); }
+  .add-btn:hover { filter:brightness(1.08); }
+  .month { margin-bottom:30px; }
+  .month-label { font-family:'Gowun Batang',serif; font-size:16px; color:var(--ink);
+    margin-bottom:4px; display:flex; align-items:baseline; gap:10px; }
+  .month-label span { font-family:'Spline Sans Mono',monospace; font-size:11px; color:var(--ink-faint); }
+  .month-rule { height:1px; background:var(--line); margin-bottom:14px; }
+  .task { display:grid; grid-template-columns:26px 116px 1fr auto auto; gap:14px; align-items:start;
+    padding:11px 12px; border-radius:8px; border:1px solid transparent;
+    transition:background .15s,border-color .15s,box-shadow .2s; }
+  .task.is-today:hover, .task.etc-row.is-today:hover, .milestone.is-today:hover {
+    box-shadow:0 0 10px 1px rgba(217,138,61,.32); }
+  .task:hover { background:var(--panel); border-color:var(--line); }
+  .task:hover .row-actions { opacity:1; }
+  .task.done { opacity:.42; }
+  .task.done .task-title { text-decoration:line-through; }
+  /* 기타일정 행 스타일 */
+  .task.etc-row { padding-left:46px; opacity:.82; }
+  .task.etc-row.done { opacity:.42; }
+  .task.is-today, .task.etc-row.is-today, .milestone.is-today {
+    border:1px solid rgba(217,138,61,.65);
+    border-radius:8px;
+    box-shadow:0 0 7px rgba(217,138,61,.22); }
+  .task.is-today:hover, .task.etc-row.is-today:hover {
+    border-color:rgba(217,138,61,.8); }
+  .task.etc-row .task-title { font-size:12.5px; color:var(--ink-dim); }
+  .check.etc-check { width:16px; height:16px; border-radius:50%; border-color:var(--etc); }
+  .check.etc-check.on { background:var(--etc); border-color:var(--etc); }
+  .wd { color:var(--ink-faint); font-size:11px; }
+  .check { width:19px; height:19px; border:1.5px solid var(--ink-faint); border-radius:5px;
+    cursor:pointer; margin-top:1px; display:flex; align-items:center; justify-content:center;
+    transition:all .15s; flex-shrink:0; }
+  .check:hover { border-color:var(--ink); }
+  .check.on { background:var(--ydp); border-color:var(--ydp); }
+  .check.on::after { content:"\2713"; color:#14110e; font-size:13px; font-weight:700; }
+  .date { font-size:12px; color:var(--ink-dim); padding-top:1px; white-space:nowrap; }
+  .date .dl { color:var(--pier2); font-weight:600; }
+  .body { min-width:0; }
+  .task-title { font-size:13.5px; color:var(--ink); }
+  .task-title .mk { font-size:9px; color:var(--ink-faint); border:1px solid var(--line);
+    padding:1px 5px; border-radius:8px; margin-right:6px; vertical-align:1px; }
+  .task-note { font-size:11.5px; color:var(--ink-faint); margin-top:3px; }
+  .tag { font-size:10px; padding:3px 9px; border-radius:12px; white-space:nowrap;
+    align-self:start; margin-top:1px; font-weight:500; }
+  .due { font-size:10px; margin-left:8px; padding:2px 7px; border-radius:10px; font-weight:600; }
+  .due.soon { background:rgba(197,69,58,.18); color:#e8776c; }
+  .due.urgent { background:var(--pier2); color:#fff; }
+  .due.past { background:var(--panel2); color:var(--ink-faint); }
+  .row-actions { display:flex; gap:4px; opacity:0; transition:opacity .15s; align-self:start; margin-top:1px; }
+  .row-actions button { font-family:inherit; font-size:11px; background:none; border:1px solid var(--line);
+    color:var(--ink-faint); width:24px; height:24px; border-radius:6px; cursor:pointer; }
+  .row-actions button:hover { color:var(--ink); border-color:var(--ink-faint); }
+  .milestone { grid-column:1/-1; display:flex; align-items:center; gap:10px; padding:8px 12px;
+    font-size:12px; letter-spacing:0.04em; position:relative; }
+  .milestone .mline { flex:1; height:1px; }
+  .milestone:hover .row-actions { opacity:1; }
+  .cal-nav { display:flex; align-items:center; justify-content:center; gap:20px; margin-bottom:16px; }
+  .cal-nav button { font-family:inherit; font-size:18px; color:var(--ink-dim); background:none;
+    border:1px solid var(--line); width:34px; height:34px; border-radius:8px; cursor:pointer; }
+  .cal-nav button:hover { color:var(--ink); border-color:var(--ink-faint); }
+  .cal-nav .cur { font-family:'Gowun Batang',serif; font-size:19px; min-width:120px; text-align:center; }
+  .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+  .cal-head { text-align:center; font-size:11px; color:var(--ink-faint); padding:6px 0; }
+  .cal-head.sun { color:#c5705a; }
+  .cell { aspect-ratio:1/1; background:var(--panel); border:1px solid var(--line); border-radius:8px;
+    padding:6px; cursor:pointer; display:flex; flex-direction:column; gap:3px; transition:all .12s; min-height:62px; }
+  .cell:hover { border-color:var(--ink-faint); background:var(--panel2); }
+  .cell.empty { background:transparent; border-color:transparent; cursor:default; }
+  .cell.today { border-color:var(--ydp); }
+  .cell.selected { border-color:var(--ink); background:var(--panel2); }
+  .cell-num { font-size:11px; color:var(--ink-dim); }
+  .cell.today .cell-num { color:var(--ydp); font-weight:600; }
+  .cell-dots { display:flex; flex-wrap:wrap; gap:2px; margin-top:auto; }
+  .cell-dot { width:6px; height:6px; border-radius:50%; }
+  .cell-more { font-size:8px; color:var(--ink-faint); }
+  .day-detail { margin-top:18px; padding:16px; background:var(--panel); border:1px solid var(--line); border-radius:10px; }
+  .day-detail h3 { font-family:'Gowun Batang',serif; font-size:15px; margin-bottom:12px; }
+  .day-detail .empty-msg { font-size:12px; color:var(--ink-faint); }
+  .dd-item { display:flex; align-items:flex-start; gap:10px; padding:9px 0; border-top:1px solid var(--line); }
+  .dd-item:first-of-type { border-top:none; }
+  .dd-item.etc { margin-left:20px; opacity:.82; }
+  .dd-tag { font-size:10px; padding:2px 8px; border-radius:10px; white-space:nowrap; margin-top:1px; }
+  .dd-body { flex:1; min-width:0; }
+  .dd-title { font-size:13px; }
+  .dd-note { font-size:11px; color:var(--ink-faint); margin-top:2px; }
+  .dd-edit { font-size:11px; background:none; border:1px solid var(--line); color:var(--ink-faint);
+    width:24px; height:24px; border-radius:6px; cursor:pointer; flex-shrink:0; }
+  footer { margin-top:40px; padding-top:18px; border-top:1px solid var(--line); font-size:11px;
+    color:var(--ink-faint); display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; align-items:center; }
+  .sync-status { margin-top:8px; font-size:11px; letter-spacing:0.02em; color:var(--ink-faint);
+    display:inline-flex; align-items:center; gap:5px; transition:color .3s; }
+  .sync-status.ok { color:#7d9a5b; }
+  .sync-status.syncing { color:var(--ydp); }
+  .sync-status.err { color:var(--pier2); }
+  .reset { font-family:inherit; font-size:11px; color:var(--ink-faint); background:none;
+    border:1px solid var(--line); padding:4px 10px; border-radius:6px; cursor:pointer; }
+  .reset:hover { color:var(--pier2); border-color:var(--pier2); }
+  .io-btns { display:flex; gap:8px; }
+  .io-btns button { font-family:inherit; font-size:11px; color:var(--ink-faint); background:none;
+    border:1px solid var(--line); padding:4px 10px; border-radius:6px; cursor:pointer; }
+  .io-btns button:hover { color:var(--ink); border-color:var(--ink-faint); }
+  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none;
+    align-items:center; justify-content:center; padding:20px; z-index:100; }
+  .modal-bg.show { display:flex; }
+  .modal { background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:24px; width:100%; max-width:440px; }
+  .modal h2 { font-family:'Gowun Batang',serif; font-size:18px; margin-bottom:18px; }
+  .field { margin-bottom:14px; }
+  .field label { display:block; font-size:11px; color:var(--ink-dim); margin-bottom:5px;
+    text-transform:uppercase; letter-spacing:0.05em; }
+  .field input, .field select, .field textarea { width:100%; font-family:inherit; font-size:13px;
+    color:var(--ink); background:var(--panel2); border:1px solid var(--line); border-radius:7px; padding:9px 11px; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline:none; border-color:var(--ydp); }
+  .field textarea { resize:vertical; min-height:54px; }
+  .field-row { display:flex; gap:10px; }
+  .field-row .field { flex:1; }
+  .checkbox-row { display:flex; align-items:center; gap:8px; }
+  .checkbox-row input { width:auto; }
+  .modal-actions { display:flex; justify-content:flex-end; gap:9px; margin-top:20px; }
+  .modal-actions button { font-family:inherit; font-size:12px; padding:8px 16px; border-radius:7px;
+    cursor:pointer; border:1px solid var(--line); }
+  .btn-cancel { background:none; color:var(--ink-dim); }
+  .btn-cancel:hover { color:var(--ink); }
+  .btn-save { background:var(--ydp); color:var(--bg); border:none; font-weight:600; }
+  .btn-del { background:none; color:var(--pier2); border-color:var(--pier2); margin-right:auto; }
+  @media (max-width:640px) {
+    .task { grid-template-columns:22px 1fr; gap:6px 10px; align-items:start; }
+    .task.etc-row { padding-left:28px; }
+    .check { grid-column:1; grid-row:1; }
+    .date { grid-column:2; grid-row:1; padding-top:1px; margin-bottom:0; }
+    .body { grid-column:2; grid-row:2; min-width:0; }
+    .tag { grid-column:2; grid-row:3; justify-self:start; margin-top:2px; }
+    .row-actions { opacity:1; grid-column:1; grid-row:2; justify-self:center; }
+    .task-title { word-break:keep-all; overflow-wrap:anywhere; }
+    .add-btn { top:auto; bottom:20px; right:20px; }
+    .cell { min-height:48px; padding:4px; }
+    .cell-num { font-size:10px; }
+    .pp-item { min-width:0; flex:1 1 100%; }
+  }
+</style>
+</head>
+<body>
+<button class="add-btn" id="addBtn">+ 새 일정</button>
+<div class="wrap">
+  <header>
+    <h1>2026 최가영 카렌다<span class="sub">Kayoung Choi — exhibitions & production tracker</span></h1>
+    <div class="today" id="today"></div>
+    <div class="sync-status" id="syncStatus" title="클라우드 동기화 상태">●  연결 중…</div>
+  </header>
+  <div class="progress-strip">
+    <span id="progress-label">진행 0 / 0</span>
+    <div class="bar"><div class="bar-fill" id="bar"></div></div>
+    <span id="progress-pct">0%</span>
+  </div>
+  <div class="proj-progress" id="projProgress"></div>
+  <div class="etc-count-row"><span class="etc-dot"></span><span id="etcCount">기타 일정  0 / 0</span></div>
+  <div class="toolbar">
+    <div class="filters" id="filters"></div>
+    <div class="right-tools">
+      <button class="past-toggle" id="pastToggle">지난 일정 숨김</button>
+      <div class="view-toggle">
+        <button id="viewList" class="active">목록</button>
+        <button id="viewCal">캘린더</button>
+      </div>
+    </div>
+  </div>
+  <div id="listView"></div>
+  <div id="calView" style="display:none;">
+    <div class="cal-nav">
+      <button id="prevM">‹</button>
+      <span class="cur" id="curMonth"></span>
+      <button id="nextM">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="day-detail" id="dayDetail" style="display:none;"></div>
+  </div>
+  <footer>
+    <span>수정 내용은 클라우드에 자동 저장되어 맥·아이폰에서 함께 보입니다 · 백업하려면 내보내기를 사용하세요</span>
+    <div class="io-btns">
+      <button id="exportBtn">내보내기(.json)</button>
+      <button id="importBtn">불러오기</button>
+      <button class="reset" id="reset">기본값 복원</button>
+    </div>
+  </footer>
+  <input type="file" id="fileInput" accept=".json" style="display:none">
+</div>
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h2 id="modalTitle">새 일정 추가</h2>
+    <div class="field-row">
+      <div class="field"><label>날짜</label>
+        <input type="date" id="f-date" min="2026-01-01" max="2027-12-31"></div>
+      <div class="field"><label>전시</label><select id="f-proj"></select></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>구분</label>
+        <select id="f-type">
+          <option value="task">작업 (체크 가능)</option>
+          <option value="milestone">전시·행사 (설치·공연·개막)</option>
+          <option value="etc">기타일정 (진행률 제외)</option>
+        </select></div>
+      <div class="field" style="flex:0 0 auto; align-self:flex-end; padding-bottom:9px;">
+        <div class="checkbox-row" style="margin-bottom:8px;"><input type="checkbox" id="f-deadline">
+          <label style="margin:0; text-transform:none;">제출 마감 \u25cf</label></div>
+        <div class="checkbox-row"><input type="checkbox" id="f-make">
+          <label style="margin:0; text-transform:none;">제작물 ⎇</label></div>
+      </div>
+    </div>
+    <div class="field"><label>내용</label>
+      <input type="text" id="f-title" placeholder="할 일 또는 행사명"></div>
+    <div class="field"><label>메모 (선택)</label>
+      <textarea id="f-note" placeholder="세부 내용"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn-del" id="delBtn" style="display:none;">삭제</button>
+      <button class="btn-cancel" id="cancelBtn">취소</button>
+      <button class="btn-save" id="saveBtn">저장</button>
+    </div>
+  </div>
+</div>
+<script>
+const PROJECTS = {
+  ydp:{name:"영등포",color:"#d98a3d"}, pier2:{name:"Pier-2",color:"#c5453a"},
+  songeun:{name:"송은",color:"#6fa3a0"}, mihak:{name:"미학관",color:"#b88bb0"},
+  shinchon:{name:"신촌극장",color:"#e0b94a"}, news:{name:"신문박물관",color:"#5a7a9e"},
+  pub:{name:"출판",color:"#c9a86a"}, field:{name:"필드트립",color:"#7d9a5b"},
+  etc:{name:"기타 일정",color:"#7e8a99"},
+};
+const PROJ_OPEN = {
+  news:'2026-06-24', pier2:'2026-07-25', ydp:'2026-09-01', mihak:'2026-10-02',
+  shinchon:'2026-12-05', songeun:'2026-12-20',
+};
+const MONTHS={'01':'1월','02':'2월','03':'3월','04':'4월','05':'5월','06':'6월','07':'7월','08':'8월','09':'9월','10':'10월','11':'11월','12':'12월'};
+const MONTH_EN={'01':'JAN','02':'FEB','03':'MAR','04':'APR','05':'MAY','06':'JUN','07':'JUL','08':'AUG','09':'SEP','10':'OCT','11':'NOV','12':'DEC'};
+const WEEKDAYS=['일','월','화','수','목','금','토'];
+const DEFAULT_TASKS = [{"id": "ydp-1", "date": "2026-06-18", "deadline": true, "proj": "ydp", "type": "task", "title": "영등포 작품계획서 1차 초안 제출 (17:00)", "note": "한 그릇 구조: 밀가루→통조림→곰탕→영등포 우육면 / 작품명·작가소개·작품설명·적용기술·예산"}, {"id": "ydp-2", "date": "2026-06-18", "deadline": true, "proj": "ydp", "type": "task", "title": "영등포 리서치노트 계획 제출", "note": "질문형 프로젝트명 + 연구 개요. jurimillercho@gmail.com / chae42@ydpcf.or.kr"}, {"id": "uy-1", "date": "2026-06-15", "proj": "pier2", "type": "task", "title": "우육면 만들기 푸티지 백업·정리", "note": "2채널 + 핀마이크 트랙 동기화 확인, 편집 로그 작성", "deadline": false, "make": true}, {"id": "uy-2", "date": "2026-06-22", "proj": "pier2", "type": "task", "title": "우육면 만들기 1차 편집 (1/3)", "note": "~07/08 완성 목표", "make": true, "deadline": false}, {"id": "ydp-3", "date": "2026-06-26", "deadline": true, "proj": "ydp", "type": "task", "title": "영등포 5차 워크숍 작업계획 공개발표 (줌 / 10:00)", "note": "리뷰어 김현주·강보라 / 개인 20분", "make": false}, {"id": "tp-1", "date": "2026-06-16", "proj": "pier2", "type": "task", "title": "Typhoon Noodle 워크숍 기획안 정리 및 공유", "note": "전시 전 진행해 기록영상 작업화 검토 / 참여자 모집", "deadline": true, "make": false}, {"id": "p2-1", "date": "2026-07-01", "deadline": true, "proj": "pier2", "type": "task", "title": "Pier-2 장비 리스트 제출", "note": "우육면 상영: 모니터/프로젝터 2대, 플레이어, 스피커 + 아카이브 집기"}, {"id": "uy-3", "date": "2026-07-08", "proj": "pier2", "type": "task", "title": "우육면 만들기 영상 편집 완료(3/3)", "note": "", "make": true, "deadline": false}, {"id": "ydp-4", "date": "2026-07-15", "deadline": true, "proj": "ydp", "type": "task", "title": "영등포 작품계획서 최종 + 연구노트 중간 (17:00)", "note": "5차 피드백 반영, 작품 위치·규모·지원비용 조율"}, {"id": "ydp-5", "date": "2026-07-16", "deadline": true, "proj": "ydp", "type": "task", "title": "영등포 6차 워크숍 1:1 중간검토 (줌 / 10:00)", "note": "진행상황·연구노트 중간 검토", "make": false}, {"id": "p2-2", "date": "2026-07-17", "deadline": true, "proj": "pier2", "type": "task", "title": "Pier-2 전시 텍스트 제출", "note": "작가노트·작품설명 / 호기심으로 더듬는 1인칭 톤"}, {"id": "uy-4", "date": "2026-07-17", "proj": "pier2", "type": "task", "title": "우육면 만들기 최종 편집 체크 및 공유", "note": "설치 전 마감 — 색보정, 자막(번체/한/영), 사운드 믹스", "deadline": true, "make": true}, {"id": "p2-ms", "date": "2026-07-20", "proj": "pier2", "type": "milestone", "title": "Pier-2 설치 시작 (7/20–24)"}, {"id": "p2-3", "date": "2026-07-24", "proj": "pier2", "type": "task", "title": "Pier-2 설치 완료 점검", "note": "2채널 동기화, 아카이브·현수막·디지털맵 배치", "deadline": false, "make": true}, {"id": "p2-open", "date": "2026-07-25", "proj": "pier2", "type": "milestone", "title": "Pier-2 개인전 개막 (7/25–8/2)"}, {"id": "ydp-6", "date": "2026-07-30", "deadline": true, "proj": "ydp", "type": "task", "title": "영등포 연구노트 최종 제출 (13:00)", "note": "6–8회 연구일지 10–20p / 방문기를 레시피 순서로 배열한 텍스트 작업"}, {"id": "se-1", "date": "2026-07-25", "proj": "songeun", "type": "task", "title": "송은 작품·설치계획서 준비 시작", "note": "신작 1점 필수 / \"소재 아닌 주제의 작가\" 프레임", "deadline": false, "make": false}, {"id": "se-2", "date": "2026-08-08", "deadline": true, "proj": "songeun", "type": "task", "title": "송은 작품·설치계획서 제출", "note": "국물들 + 곰팡이 Colonies / 공간배정용 상세", "make": false}, {"id": "ydp-7", "date": "2026-06-18", "proj": "ydp", "type": "task", "title": "영등포 영상 편집 착수, 인터랙티브 지도 좌표 아카이빙", "note": "대선제분→대만 통조림→나주곰탕→영등포 우육면 에필로그", "deadline": false, "make": true}, {"id": "ydp-8", "date": "2026-08-09", "proj": "ydp", "type": "task", "title": "대선제분+신길·대림 우육면 가게 1곳 촬영, 푸티지 정리 ~8/10", "note": "에필로그용 / 대림을 설명 말고 한 점으로 비스듬히", "deadline": false, "make": true}, {"id": "field-1", "date": "2026-08-18", "proj": "field", "type": "task", "title": "오은정·콘노 유키 협업 리서치(니가타-센다이) 촬영", "note": "신촌극장 즌다의 맛 + 야마모토 라인 자료 수집. ~8/?", "deadline": false}, {"id": "mh-1", "date": "2026-08-17", "proj": "mihak", "type": "task", "title": "미학관 출품작+a 목록 정리", "note": "<우육면 만들기>와 관련된 아카이브", "deadline": false, "make": true}, {"id": "ydp-9", "date": "2026-08-25", "proj": "ydp", "type": "task", "title": "영등포 인터랙티브 지도 제작, 영상 작품 완성(2/3)", "note": "영상 장소들 = 관람객의 열린 경로", "deadline": false, "make": true}, {"id": "mh-2", "date": "2026-08-28", "deadline": true, "proj": "mihak", "type": "task", "title": "미학관 출품작·전시디자인·장비 결정", "note": "<우육면 만들기> + 리서치 아카이브", "make": false}, {"id": "ydp-10", "date": "2026-08-31", "deadline": true, "proj": "ydp", "type": "task", "title": "영등포 작품 최종 완성(3/3)", "note": "영상 + 인터랙티브 지도 최종", "make": true}, {"id": "ydp-open", "date": "2026-09-01", "proj": "ydp", "type": "milestone", "title": "영등포 기획전 개막 (9/1–20)"}, {"id": "se-3", "date": "2026-09-02", "proj": "songeun", "type": "task", "title": "국물들 최종 편집 ~9/30", "note": "영등포 지도판과 다른 초점 — 국물·물류·산업으로 확산", "deadline": false, "make": true}, {"id": "se-4", "date": "2026-09-02", "proj": "songeun", "type": "task", "title": "곰팡이 Colonies in Cultures 편집 ~9/30", "note": "명태 곰팡이 계대배양 / 통조림 아닌 물질로 분단·이동", "deadline": false, "make": true}, {"id": "mh-3", "date": "2026-09-22", "proj": "mihak", "type": "task", "title": "미학관 출품작 설치 준비 완료", "note": "아티스트 토크 구성 포함", "deadline": false, "make": false}, {"id": "mh-ms", "date": "2026-09-28", "proj": "mihak", "type": "task", "title": "미학관 설치 (9/28–10/1)", "deadline": false, "make": false, "note": ""}, {"id": "mh-open", "date": "2026-10-02", "proj": "mihak", "type": "milestone", "title": "미학관 기획전 개막 (10/2–25)"}, {"id": "sc-1", "date": "2026-10-03", "proj": "shinchon", "type": "task", "title": "신촌극장 영상·메뉴 2차 완성(2/3)", "note": "즌다의 맛(센다이), 항구(니가타), 치즈와 우체통(도쿄), 소고기통조림(대만, 히로시마), 다케나카(서울, 교토, 나주) 푸티지 / 무대·영상 협업팀 세팅", "deadline": false, "make": true}, {"id": "sc-3", "date": "2026-10-31", "proj": "shinchon", "type": "task", "title": "신촌극장 영상·메뉴 완성(3/3)", "note": "10월 내 마감 목표 — 송은과 동시제작 병목 대비", "deadline": false, "make": true}, {"id": "se-5", "date": "2026-11-10", "proj": "songeun", "type": "task", "title": "송은 신작 최종 완성", "note": "신촌과 자료 분리: 송은=통조림·물류 / 신촌=야마모토·일본", "deadline": false, "make": true}, {"id": "sc-4", "date": "2026-11-30", "proj": "shinchon", "type": "task", "title": "신촌극장 무대 설치", "note": "신촌극장 출근 의무X", "deadline": false, "make": false}, {"id": "se-ms", "date": "2026-12-03", "proj": "songeun", "type": "milestone", "title": "송은 설치 (12/3–7)"}, {"id": "se-open", "date": "2026-12-20", "proj": "songeun", "type": "milestone", "title": "송은미술대상 전시 개막 (12/20~2/20)", "deadline": false, "note": ""}, {"date": "2026-06-30", "title": "우육면 만들기 영상 편집 완료 (2/3)", "proj": "pier2", "type": "task", "deadline": false, "note": "", "id": "u1781236966755", "make": true}, {"date": "2026-12-03", "title": "송은 설치 (10am ~ 6pm)", "proj": "songeun", "type": "task", "deadline": false, "note": "", "id": "u1781239494538"}, {"date": "2026-12-04", "title": "송은 설치 (10am ~ 6pm)", "proj": "songeun", "type": "task", "deadline": false, "note": "", "id": "u1781239519530"}, {"date": "2026-12-07", "title": "송은 설치 마무리", "proj": "songeun", "type": "task", "deadline": false, "note": "", "id": "u1781239546034", "make": false}, {"date": "2026-12-03", "title": "리허설 (6pm~)", "proj": "shinchon", "type": "task", "deadline": false, "note": "", "id": "u1781240206398"}, {"date": "2026-12-04", "title": "리허설 (6pm~)", "proj": "ydp", "type": "task", "deadline": false, "note": "", "id": "u1781240230382"}, {"date": "2026-12-05", "title": "신촌극장 12/05 공연 1일차", "proj": "shinchon", "type": "milestone", "deadline": false, "note": "", "id": "u1781240707762"}, {"date": "2026-12-06", "title": "신촌극장 12/06 공연 2일차", "proj": "shinchon", "type": "milestone", "deadline": false, "note": "", "id": "u1781240749406"}, {"date": "2026-12-08", "title": "신촌극장 12/08 공연 3일차", "proj": "shinchon", "type": "milestone", "deadline": false, "note": "", "id": "u1781240787770"}, {"date": "2026-12-08", "title": "출품원서, 신분증, 통장사본 제출", "proj": "songeun", "type": "task", "deadline": true, "note": "", "id": "u1781240813137"}, {"date": "2026-12-09", "title": "신촌극장 12/09 공연 4일차", "proj": "shinchon", "type": "milestone", "deadline": false, "note": "", "id": "u1781240840974"}, {"date": "2026-12-10", "title": "신촌극장 12/10 공연 5일차", "proj": "shinchon", "type": "milestone", "deadline": false, "note": "", "id": "u1781240873422"}, {"date": "2026-12-11", "title": "신촌극장 12/11 공연 6일차", "proj": "shinchon", "type": "milestone", "deadline": false, "note": "", "id": "u1781240897450"}, {"date": "2026-12-12", "title": "신촌극장 12/12 공연 7일차 (막공)", "proj": "shinchon", "type": "milestone", "deadline": false, "note": "", "id": "u1781240923484"}, {"date": "2026-12-01", "title": "설치, 리허설", "proj": "shinchon", "type": "task", "deadline": false, "note": "", "id": "u1781241161123"}, {"date": "2026-12-02", "title": "설치 마무리, 리허설", "proj": "shinchon", "type": "task", "deadline": false, "note": "", "id": "u1781241184898", "make": false}, {"date": "2026-08-15", "title": "영등포 영상 작품 완성(1/3)", "proj": "ydp", "type": "task", "deadline": false, "note": "", "id": "u1781244846125", "make": true}, {"id": "news-open", "date": "2026-06-24", "proj": "news", "type": "milestone", "title": "신문박물관 전시 개막 (6/24–8/30)", "deadline": false, "note": ""}, {"date": "2026-06-12", "title": "[서사대] 과제 채점 (V)", "proj": "etc", "type": "etc", "deadline": false, "note": "", "id": "u1781252361652", "make": false}, {"date": "2026-06-13", "title": "[Phaedra] Rukai millet ~06/14", "proj": "etc", "type": "etc", "deadline": false, "note": "", "id": "u1781252408223"}, {"date": "2026-06-14", "title": "[Goche] Culture ferry", "proj": "etc", "type": "etc", "deadline": false, "note": "", "id": "u1781252435777"}, {"date": "2026-06-19", "title": "[Taiwan] Dragon boat festival ~06/21", "proj": "etc", "type": "etc", "deadline": false, "note": "", "id": "u1781252488206"}, {"date": "2026-07-07", "title": "6pm 윤석, 연지 온라인 미팅", "proj": "shinchon", "type": "etc", "deadline": false, "note": "한국시각 7pm", "id": "u1781252562302"}, {"date": "2026-06-24", "title": "[Minjou] Tainan", "proj": "etc", "type": "etc", "deadline": false, "note": "", "id": "u1781252684660"}, {"date": "2026-06-16", "title": "영등포 작업 푸티지 정리", "proj": "ydp", "type": "task", "deadline": false, "note": "", "id": "u1781252764440", "make": true}, {"date": "2026-08-06", "title": "[엄마] 병원", "proj": "etc", "type": "etc", "deadline": false, "make": false, "note": "", "id": "u1781253260806"}, {"date": "2026-08-04", "title": "[귀국] 13:00 가오슝 -> 17:55 김포", "proj": "etc", "type": "etc", "deadline": false, "make": false, "note": "", "id": "u1781253390301"}, {"date": "2026-08-01", "title": "[엄마] 09:45 김포 -> 12:00 가오슝", "proj": "etc", "type": "etc", "deadline": false, "make": false, "note": "", "id": "u1781253480409"}, {"date": "2026-07-01", "title": "신촌극장 영상·메뉴 1차 셋업(1/3) ~07/06", "proj": "shinchon", "type": "task", "deadline": false, "make": true, "note": "즌다의 맛(센다이), 항구(니가타), 치즈와 우체통(도쿄), 소고기통조림(대만, 히로시마), 다케나카(서울, 교토, 나주) 푸티지", "id": "u1781254296688"}, {"date": "2026-07-09", "title": "국물들, Colonies 푸티지 셋업 및 확인 ~7/16", "proj": "songeun", "type": "task", "deadline": false, "make": true, "note": "", "id": "u1781255118608"}, {"date": "2026-07-18", "title": "[두루두루] 송은 설치계획 회의 07/18 or 07/19", "proj": "songeun", "type": "etc", "deadline": false, "make": false, "note": "", "id": "u1781255165503"}, {"date": "2026-08-07", "title": "[두루두루] 송은 설치계획 회의", "proj": "songeun", "type": "etc", "deadline": false, "make": false, "note": "", "id": "u1781255211878"}, {"date": "2026-09-30", "title": "송은 영상 작업(국물들, 곰팡이) 완성", "proj": "songeun", "type": "task", "deadline": false, "make": true, "note": "", "id": "u1781255292371"}, {"date": "2026-06-17", "title": "출판 내용, 대략적인 내용, 아카이빙 폴더 만들고 히스테리안 공유", "proj": "pub", "type": "task", "deadline": false, "make": true, "note": "", "id": "u1781255468909"}];
+const _now=new Date();
+const TODAY=new Date(_now.getFullYear(),_now.getMonth(),_now.getDate());
+function _fmt(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+const TODAY_STR=_fmt(TODAY);
+const RESIDENCY_END=new Date('2026-08-04');
+const STORE='kayoung_sched_v8';
+/* ===== 클라우드 동기화 (JSONBin) ===== */
+const BIN_ID='6a4297cef5f4af5e294291db';
+const MASTER_KEY='$2a$10$w6cMxvK0SSbcGrbnTsDwTuMZ/JrzwABKmcESj4N//C3KdvLS3GiP.';
+const JSONBIN_URL='https://api.jsonbin.io/v3/b/'+BIN_ID;
+const SYNC_HEADERS={'Content-Type':'application/json','X-Master-Key':MASTER_KEY,'X-Bin-Meta':'false'};
+let cloudReady=false;      // 클라우드에서 한 번이라도 읽어왔는지
+let saveTimer=null;        // 저장 디바운스
+let pushing=false;         // 현재 업로드 중인지
+
+function setSync(cls,txt){
+  const el=document.getElementById('syncStatus');
+  if(!el) return;
+  el.className='sync-status'+(cls?' '+cls:'');
+  el.textContent='● '+txt;
+}
+
+// 클라우드에서 읽어오기
+async function pullCloud(){
+  setSync('syncing','동기화 중…');
+  try{
+    const res=await fetch(JSONBIN_URL+'/latest',{headers:SYNC_HEADERS});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    // X-Bin-Meta:false 이면 본문이 곧 우리 데이터
+    if(data && Array.isArray(data.tasks) && data.tasks.length>0){
+      state=data;
+      cloudReady=true;
+      localStorage.setItem(STORE,JSON.stringify(state));
+      renderAll();
+      setSync('ok','동기화됨');
+      return true;
+    }
+    // 클라우드가 비어있음 → 현재 로컬 데이터(기본 일정 포함)를 클라우드에 올림(최초 1회)
+    cloudReady=true;
+    if(!state.tasks || state.tasks.length===0){
+      state={ tasks:JSON.parse(JSON.stringify(DEFAULT_TASKS)), done:{}, hidden:{} };
+      localStorage.setItem(STORE,JSON.stringify(state));
+      renderAll();
+    }
+    await pushCloud(true);
+    return true;
+  }catch(e){
+    cloudReady=false;
+    setSync('err','오프라인 (로컬 저장)');
+    return false;
+  }
+}
+
+// 클라우드에 쓰기
+async function pushCloud(force){
+  if(!cloudReady && !force){ return; }
+  if(pushing){ return; }
+  pushing=true;
+  setSync('syncing','저장 중…');
+  try{
+    const res=await fetch(JSONBIN_URL,{
+      method:'PUT', headers:SYNC_HEADERS, body:JSON.stringify(state)
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    setSync('ok','동기화됨');
+  }catch(e){
+    setSync('err','저장 실패 (로컬에는 보관됨)');
+  }finally{
+    pushing=false;
+  }
+}
+
+function load(){ try{ const s=JSON.parse(localStorage.getItem(STORE));
+    if(s&&s.tasks){ state=s; return; } }catch(e){}
+  state={ tasks:JSON.parse(JSON.stringify(DEFAULT_TASKS)), done:{}, hidden:{} }; }
+function save(){
+  try{ localStorage.setItem(STORE,JSON.stringify(state)); }catch(e){}
+  // 클라우드 저장은 디바운스(연속 변경 묶어서 1.2초 후 1회 전송)
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>pushCloud(false),1200);
+}
+let state={ tasks:[], done:{}, hidden:{} };
+let viewMode='list';
+let hidePast=true;
+let calYear=TODAY.getFullYear(), calMonth=TODAY.getMonth();
+let selectedDate=null;
+
+function daysUntil(d){ return Math.round((new Date(d)-TODAY)/86400000); }
+function dueLabel(d){ const n=daysUntil(d);
+  if(n<0) return {cls:'past',txt:'지남'}; if(n===0) return {cls:'urgent',txt:'오늘'};
+  if(n<=3) return {cls:'urgent',txt:'D-'+n}; if(n<=10) return {cls:'soon',txt:'D-'+n}; return null; }
+function isMake(t){ return !!t.make; }
+function fmtDate(y,m,d){ return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0'); }
+function isPast(t){ return t.date < TODAY_STR; }
+
+function renderCommon(){
+  const _wd=['일','월','화','수','목','금','토'][TODAY.getDay()];
+  let todayHtml='TODAY <b>'+TODAY.getFullYear()+'.'+String(TODAY.getMonth()+1).padStart(2,'0')+'.'+String(TODAY.getDate()).padStart(2,'0')+' ('+_wd+')</b>';
+  // 가장 시급한 다가오는 디데이 항목 자동 선택 (오늘 지난 건 자동으로 다음 항목으로 넘어감)
+  const upcoming=state.tasks
+    .filter(t=>t.date>=TODAY_STR && !state.done[t.id] && (t.type==='milestone' || t.deadline===true))
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  if(upcoming.length){
+    const nx=upcoming[0];
+    const n=daysUntil(nx.date);
+    const dLabel=n===0?'D-DAY':'D-'+n;
+    const md=nx.date.slice(5,7)+'/'+nx.date.slice(8,10);
+    todayHtml+='<br><span class="next-dday">다음 마감 '+dLabel+' · '+nx.title+' ('+md+')</span>';
+  }
+  document.getElementById('today').innerHTML=todayHtml;
+
+  const fbox=document.getElementById('filters'); fbox.innerHTML='';
+  Object.entries(PROJECTS).forEach(([k,p])=>{
+    const c=document.createElement('div');
+    c.className='chip'+(state.hidden[k]?' off':'');
+    let ddText='';
+    if(PROJ_OPEN[k]){ const n=daysUntil(PROJ_OPEN[k]);
+      ddText=n>0?` <span class="dd">D-${n}</span>`:(n===0?` <span class="dd">개막</span>`:` <span class="dd">진행중</span>`); }
+    c.innerHTML=`<span class="dot" style="background:${p.color}"></span>${p.name}${ddText}`;
+    c.onclick=()=>{ state.hidden[k]=!state.hidden[k]; save(); renderAll(); };
+    fbox.appendChild(c);
+  });
+
+  // 진행률: 기타일정(type==='etc') 제외, milestone 제외
+  const all=state.tasks.filter(t=>t.type==='task');
+  const fin=all.filter(t=>state.done[t.id]).length;
+  const pct=all.length?Math.round(fin/all.length*100):0;
+  document.getElementById('progress-label').textContent=`전체 ${fin} / ${all.length}`;
+  document.getElementById('progress-pct').textContent=pct+'%';
+  document.getElementById('bar').style.width=pct+'%';
+
+  // 기타 일정 개수 (완료/전체)
+  const etcAll=state.tasks.filter(t=>t.type==='etc');
+  const etcFin=etcAll.filter(t=>state.done[t.id]).length;
+  const etcEl=document.getElementById('etcCount');
+  if(etcEl) etcEl.textContent=`기타 일정  ${etcFin} / ${etcAll.length}`;
+
+  const pp=document.getElementById('projProgress'); pp.innerHTML='';
+  Object.entries(PROJECTS).forEach(([k,p])=>{
+    const items=state.tasks.filter(t=>t.proj===k&&t.type==='task');
+    if(!items.length) return;
+    const f=items.filter(t=>state.done[t.id]).length;
+    const pc=Math.round(f/items.length*100);
+    const el=document.createElement('div'); el.className='pp-item';
+    el.innerHTML=`<span class="pp-dot" style="background:${p.color}"></span>
+      <span class="pp-name">${p.name}</span>
+      <span class="pp-bar"><span class="pp-fill" style="width:${pc}%;background:${p.color}"></span></span>
+      <span class="pp-num">${f}/${items.length}</span>`;
+    pp.appendChild(el);
+  });
+
+  const pt=document.getElementById('pastToggle');
+  pt.textContent=hidePast?'지난 일정 보기':'지난 일정 숨김';
+  pt.classList.toggle('on',hidePast);
+}
+
+function visibleTasks(){
+  return state.tasks.filter(t=>!state.hidden[t.proj] && !(hidePast && isPast(t)));
+}
+
+function rowHtml(t){
+  const p=PROJECTS[t.proj]||{name:t.proj,color:'#888'};
+  const _wd=WEEKDAYS[new Date(t.date+'T00:00:00').getDay()];
+  const dd=t.date.slice(5,7)+'/'+t.date.slice(8,10)+' <span class="wd">('+_wd+')</span>';
+  const tdy=t.date===TODAY_STR?' is-today':'';
+  if(t.type==='milestone'){
+    return `<div class="milestone${tdy}"><span class="dot" style="background:${p.color}"></span>
+      <span style="color:${p.color};font-weight:600">${t.title}</span>
+      <span class="mline" style="background:linear-gradient(90deg,${p.color}44,transparent)"></span>
+      <div class="row-actions"><button data-edit="${t.id}">\u270e</button></div></div>`;
+  }
+  if(t.type==='etc'){
+    const etcDone=!!state.done[t.id];
+    const etcDue=etcDone?null:dueLabel(t.date);
+    return `<div class="task etc-row${etcDone?' done':''}${tdy}">
+      <div class="check etc-check ${etcDone?'on':''}" data-check="${t.id}"></div>
+      <div class="date">${dd}</div>
+      <div class="body"><div class="task-title">${t.title}${etcDue?`<span class="due ${etcDue.cls}">${etcDue.txt}</span>`:''}</div>
+        ${t.note?`<div class="task-note">${t.note}</div>`:''}</div>
+      <div class="tag" style="background:${p.color}22;color:${p.color}">${p.name}</div>
+      <div class="row-actions"><button data-edit="${t.id}">\u270e</button></div></div>`;
+  }
+  const isDone=!!state.done[t.id];
+  const due=isDone?null:dueLabel(t.date);
+  const mk=isMake(t)?'<span class="mk">제작</span>':'';
+  return `<div class="task${isDone?' done':''}${tdy}">
+    <div class="check ${isDone?'on':''}" data-check="${t.id}"></div>
+    <div class="date">${t.deadline?'<span class="dl">\u25cf</span> ':''}${dd}</div>
+    <div class="body"><div class="task-title">${mk}${t.title}${due?`<span class="due ${due.cls}">${due.txt}</span>`:''}</div>
+      ${t.note?`<div class="task-note">${t.note}</div>`:''}</div>
+    <div class="tag" style="background:${p.color}22;color:${p.color}">${p.name}</div>
+    <div class="row-actions"><button data-edit="${t.id}">\u270e</button></div></div>`;
+}
+
+function renderList(){
+  const cal=document.getElementById('listView'); cal.innerHTML='';
+  const sorted=visibleTasks().sort((a,b)=>a.date.localeCompare(b.date));
+  const byMonth={};
+  sorted.forEach(t=>{ const key=t.date.slice(0,7); (byMonth[key]=byMonth[key]||[]).push(t); });
+  Object.keys(byMonth).sort().forEach(key=>{
+    const m=key.slice(5,7);
+    const mDiv=document.createElement('div'); mDiv.className='month';
+    mDiv.innerHTML=`<div class="month-label">${MONTHS[m]}<span>${MONTH_EN[m]} ${key.slice(0,4)}</span></div><div class="month-rule"></div>`;
+    byMonth[key].forEach(t=>{ mDiv.insertAdjacentHTML('beforeend', rowHtml(t)); });
+    cal.appendChild(mDiv);
+  });
+  bindRowEvents();
+}
+
+function renderCalendar(){
+  document.getElementById('curMonth').textContent=calYear+'. '+MONTHS[String(calMonth+1).padStart(2,'0')];
+  const grid=document.getElementById('calGrid'); grid.innerHTML='';
+  WEEKDAYS.forEach((w,i)=>{ const h=document.createElement('div');
+    h.className='cal-head'+(i===0?' sun':''); h.textContent=w; grid.appendChild(h); });
+  const first=new Date(calYear,calMonth,1).getDay();
+  const days=new Date(calYear,calMonth+1,0).getDate();
+  for(let i=0;i<first;i++){ const e=document.createElement('div'); e.className='cell empty'; grid.appendChild(e); }
+  for(let d=1;d<=days;d++){
+    const dateStr=fmtDate(calYear,calMonth,d);
+    const items=state.tasks.filter(t=>t.date===dateStr&&!state.hidden[t.proj]);
+    const cell=document.createElement('div');
+    cell.className='cell'+(dateStr===TODAY_STR?' today':'')+(dateStr===selectedDate?' selected':'');
+    let dotsHtml='';
+    const projs=[...new Set(items.map(t=>t.proj))].slice(0,5);
+    projs.forEach(pr=>{ const p=PROJECTS[pr]||{color:'#888'};
+      dotsHtml+=`<span class="cell-dot" style="background:${p.color}"></span>`; });
+    const more=items.length>0?`<span class="cell-more">${items.length}</span>`:'';
+    cell.innerHTML=`<span class="cell-num">${d}</span><div class="cell-dots">${dotsHtml}${more}</div>`;
+    cell.onclick=()=>{ selectedDate=dateStr; renderCalendar(); };
+    grid.appendChild(cell);
+  }
+  renderDayDetail();
+}
+
+function renderDayDetail(){
+  const dd=document.getElementById('dayDetail');
+  if(!selectedDate){ dd.style.display='none'; return; }
+  dd.style.display='block';
+  const items=state.tasks.filter(t=>t.date===selectedDate&&!state.hidden[t.proj])
+    .sort((a,b)=>{ const o={milestone:0,task:1,etc:2}; return o[a.type]-o[b.type]; });
+  const dObj=new Date(selectedDate);
+  const label=selectedDate.slice(5,7)+'월 '+selectedDate.slice(8,10)+'일 ('+WEEKDAYS[dObj.getDay()]+')';
+  let html=`<h3>${label}</h3>`;
+  if(!items.length){ html+=`<div class="empty-msg">이 날의 일정이 없습니다. 우측 상단 + 새 일정으로 추가할 수 있어요.</div>`; }
+  else { items.forEach(t=>{
+    const p=PROJECTS[t.proj]||{name:t.proj,color:'#888'};
+    if(t.type==='etc'){
+      html+=`<div class="dd-item etc">
+        <span style="width:19px;flex-shrink:0;display:flex;justify-content:center;margin-top:3px;"><span style="width:5px;height:5px;border-radius:50%;border:1px solid var(--etc);display:block;"></span></span>
+        <span class="dd-tag" style="background:${p.color}22;color:${p.color}">${p.name}</span>
+        <div class="dd-body"><div class="dd-title" style="color:var(--ink-dim)">${t.title}</div>
+          ${t.note?`<div class="dd-note">${t.note}</div>`:''}</div>
+        <button class="dd-edit" data-edit="${t.id}">\u270e</button></div>`;
+      return;
+    }
+    const isDone=!!state.done[t.id];
+    const checkHtml=t.type==='task'?`<div class="check ${isDone?'on':''}" data-check="${t.id}" style="margin-top:1px;"></div>`:'<span style="width:19px;flex-shrink:0;"></span>';
+    const mk=isMake(t)?'<span class="mk">제작</span>':'';
+    html+=`<div class="dd-item">${checkHtml}
+      <span class="dd-tag" style="background:${p.color}22;color:${p.color}">${p.name}</span>
+      <div class="dd-body"><div class="dd-title" style="${isDone?'text-decoration:line-through;opacity:.5;':''}">${t.deadline?'<span style="color:var(--pier2)">\u25cf</span> ':''}${mk}${t.title}</div>
+        ${t.note?`<div class="dd-note">${t.note}</div>`:''}</div>
+      <button class="dd-edit" data-edit="${t.id}">\u270e</button></div>`;
+  }); }
+  dd.innerHTML=html;
+  bindRowEvents();
+}
+
+function bindRowEvents(){
+  document.querySelectorAll('[data-check]').forEach(c=>{
+    c.onclick=(e)=>{ e.stopPropagation(); state.done[c.dataset.check]=!state.done[c.dataset.check];
+      save(); renderAll(); }; });
+  document.querySelectorAll('[data-edit]').forEach(b=>{
+    b.onclick=(e)=>{ e.stopPropagation(); openModal(b.dataset.edit); }; });
+}
+
+function renderAll(){
+  renderCommon();
+  if(viewMode==='list'){ renderList(); } else { renderCalendar(); }
+}
+
+document.getElementById('viewList').onclick=()=>{
+  viewMode='list';
+  document.getElementById('viewList').classList.add('active');
+  document.getElementById('viewCal').classList.remove('active');
+  document.getElementById('listView').style.display='block';
+  document.getElementById('calView').style.display='none';
+  renderAll();
+};
+document.getElementById('viewCal').onclick=()=>{
+  viewMode='cal';
+  document.getElementById('viewCal').classList.add('active');
+  document.getElementById('viewList').classList.remove('active');
+  document.getElementById('listView').style.display='none';
+  document.getElementById('calView').style.display='block';
+  renderAll();
+};
+document.getElementById('pastToggle').onclick=()=>{ hidePast=!hidePast; renderAll(); };
+document.getElementById('prevM').onclick=()=>{ calMonth--; if(calMonth<0){ calMonth=11; calYear--; } renderCalendar(); };
+document.getElementById('nextM').onclick=()=>{ calMonth++; if(calMonth>11){ calMonth=0; calYear++; } renderCalendar(); };
+
+let editingId=null;
+const modalBg=document.getElementById('modalBg');
+const projSel=document.getElementById('f-proj');
+Object.entries(PROJECTS).forEach(([k,p])=>{
+  const o=document.createElement('option'); o.value=k; o.textContent=p.name; projSel.appendChild(o); });
+function openModal(id){
+  editingId=id||null;
+  document.getElementById('modalTitle').textContent=id?'일정 수정':'새 일정 추가';
+  document.getElementById('delBtn').style.display=id?'block':'none';
+  if(id){ const t=state.tasks.find(x=>x.id===id);
+    document.getElementById('f-date').value=t.date;
+    document.getElementById('f-proj').value=t.proj;
+    document.getElementById('f-type').value=t.type;
+    document.getElementById('f-deadline').checked=!!t.deadline;
+    document.getElementById('f-make').checked=!!t.make;
+    document.getElementById('f-title').value=t.title;
+    document.getElementById('f-note').value=t.note||'';
+  } else {
+    document.getElementById('f-date').value=selectedDate||TODAY_STR;
+    document.getElementById('f-proj').value='ydp';
+    document.getElementById('f-type').value='task';
+    document.getElementById('f-deadline').checked=false;
+    document.getElementById('f-make').checked=false;
+    document.getElementById('f-title').value='';
+    document.getElementById('f-note').value='';
+  }
+  modalBg.classList.add('show');
+}
+function closeModal(){ modalBg.classList.remove('show'); editingId=null; }
+document.getElementById('addBtn').onclick=()=>openModal(null);
+document.getElementById('cancelBtn').onclick=closeModal;
+modalBg.onclick=(e)=>{ if(e.target===modalBg) closeModal(); };
+document.getElementById('f-type').onchange=function(){
+  // 기타일정 선택 시 전시 칸을 기타로 자동 제안(사용자가 바꿀 수 있음)
+  if(this.value==='etc' && document.getElementById('f-proj').value==='ydp'){
+    document.getElementById('f-proj').value='etc';
+  }
+};
+document.getElementById('saveBtn').onclick=()=>{
+  const date=document.getElementById('f-date').value;
+  const title=document.getElementById('f-title').value.trim();
+  if(!date||!title){ alert('날짜와 내용을 입력해주세요.'); return; }
+  const data={ date, title,
+    proj:document.getElementById('f-proj').value,
+    type:document.getElementById('f-type').value,
+    deadline:document.getElementById('f-deadline').checked,
+    make:document.getElementById('f-make').checked,
+    note:document.getElementById('f-note').value.trim() };
+  if(editingId){ Object.assign(state.tasks.find(x=>x.id===editingId),data); }
+  else { data.id='u'+Date.now(); state.tasks.push(data); }
+  save(); renderAll(); closeModal();
+};
+document.getElementById('delBtn').onclick=()=>{
+  if(editingId&&confirm('이 일정을 삭제할까요?')){
+    state.tasks=state.tasks.filter(x=>x.id!==editingId);
+    delete state.done[editingId]; save(); renderAll(); closeModal(); }
+};
+document.getElementById('exportBtn').onclick=()=>{
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='작업일정_백업_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+};
+document.getElementById('importBtn').onclick=()=>document.getElementById('fileInput').click();
+document.getElementById('fileInput').onchange=(e)=>{
+  const f=e.target.files[0]; if(!f) return; const r=new FileReader();
+  r.onload=()=>{ try{ const s=JSON.parse(r.result);
+    if(s.tasks){ state=s; save(); renderAll(); alert('불러왔습니다.'); }
+    else alert('올바른 백업 파일이 아닙니다.');
+  }catch(err){ alert('파일을 읽을 수 없습니다.'); } };
+  r.readAsText(f);
+};
+document.getElementById('reset').onclick=()=>{
+  if(confirm('모든 일정을 기본값으로 되돌릴까요? (추가/수정한 내용이 사라집니다)')){
+    state={ tasks:JSON.parse(JSON.stringify(DEFAULT_TASKS)), done:{}, hidden:{} };
+    save(); renderAll(); }
+};
+load(); renderAll();
+// 시작 시 클라우드에서 최신본 가져오기
+pullCloud();
+// 다른 기기에서 바꾼 내용 반영: 앱으로 돌아올 때마다 새로고침
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) pullCloud(); });
+</script>
+</body>
+</html>
