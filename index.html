@@ -378,6 +378,20 @@ function syncProjRefs(){
   PROJ_OPEN = {};
   Object.entries(PROJECTS).forEach(([k,p])=>{ if(p.open) PROJ_OPEN[k]=p.open; });
 }
+/* 전시 목록 정렬: 개막일 빠른 순 → 개막일 없는 것은 맨 뒤(기타 일정은 항상 마지막) */
+function sortedProjects(){
+  return Object.entries(state.projects||{}).sort((a,b)=>{
+    const [ka,pa]=a, [kb,pb]=b;
+    // 기타 일정은 항상 최후미
+    if(ka==='etc' && kb!=='etc') return 1;
+    if(kb==='etc' && ka!=='etc') return -1;
+    const oa=pa.open||'', ob=pb.open||'';
+    if(oa && ob) return oa.localeCompare(ob);   // 둘 다 개막일 있음 → 날짜순
+    if(oa && !ob) return -1;                    // 개막일 있는 쪽이 앞
+    if(!oa && ob) return 1;
+    return (pa.name||'').localeCompare(pb.name||''); // 둘 다 없음 → 이름순
+  });
+}
 const MONTHS={'01':'1월','02':'2월','03':'3월','04':'4월','05':'5월','06':'6월','07':'7월','08':'8월','09':'9월','10':'10월','11':'11월','12':'12월'};
 const MONTH_EN={'01':'JAN','02':'FEB','03':'MAR','04':'APR','05':'MAY','06':'JUN','07':'JUL','08':'AUG','09':'SEP','10':'OCT','11':'NOV','12':'DEC'};
 const WEEKDAYS=['일','월','화','수','목','금','토'];
@@ -518,7 +532,7 @@ function renderCommon(){
   };
 
   const fbox=document.getElementById('filters'); fbox.innerHTML='';
-  Object.entries(PROJECTS).forEach(([k,p])=>{
+  sortedProjects().forEach(([k,p])=>{
     const c=document.createElement('div');
     c.className='chip'+(state.hidden[k]?' off':'');
     let ddText='';
@@ -552,7 +566,7 @@ function renderCommon(){
   if(etcEl) etcEl.textContent=`기타 일정  ${etcFin} / ${etcAll.length}`;
 
   const pp=document.getElementById('projProgress'); pp.innerHTML='';
-  Object.entries(PROJECTS).forEach(([k,p])=>{
+  sortedProjects().forEach(([k,p])=>{
     if(k==='etc') return;   // 기타 일정은 진행률 패널에서 제외
     const items=state.tasks.filter(t=>t.proj===k&&t.type==='task');
     if(!items.length) return;
@@ -728,7 +742,7 @@ function rebuildProjSelect(){
   if(!sel) return;
   const cur=sel.value;
   sel.innerHTML='';
-  Object.entries(state.projects||{}).forEach(([k,p])=>{
+  sortedProjects().forEach(([k,p])=>{
     const o=document.createElement('option'); o.value=k; o.textContent=p.name; sel.appendChild(o); });
   if(cur && state.projects[cur]) sel.value=cur;
 }
@@ -844,7 +858,7 @@ function slugifyProj(name){
 }
 function renderProjList(){
   const box=document.getElementById('projList'); box.innerHTML='';
-  Object.entries(state.projects).forEach(([k,p])=>{
+  sortedProjects().forEach(([k,p])=>{
     const row=document.createElement('div');
     row.className='proj-row'+(editingProj===k?' sel':'');
     const dates=p.open?(p.open.slice(5).replace('-','/')+(p.close?' – '+p.close.slice(5).replace('-','/'):'')):'';
