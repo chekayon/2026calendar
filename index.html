@@ -42,9 +42,6 @@
   .od-arrow { color:var(--pier2); font-size:10px; }
   .overdue-body { display:none; padding:0 6px 8px; }
   .overdue-sec.open .overdue-body { display:block; }
-  .etc-count-row { display:flex; align-items:center; gap:7px; font-size:11.5px;
-    color:var(--ink-faint); margin:-8px 0 20px; padding-left:2px; }
-  .etc-dot { width:8px; height:8px; border-radius:50%; background:var(--etc); flex-shrink:0; }
   .progress-strip { display:flex; align-items:center; gap:14px; margin:22px 0 14px;
     font-size:12px; color:var(--ink-dim); }
   .bar { flex:1; height:6px; background:var(--panel2); border-radius:3px; overflow:hidden; }
@@ -196,6 +193,9 @@
   .proj-row.sel { border-color:var(--ydp); }
   .proj-row .pr-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
   .proj-row .pr-name { flex:1; color:var(--ink); }
+  .pr-np { display:inline-block; margin-left:6px; font-size:9.5px; padding:1px 5px;
+    border-radius:4px; background:var(--panel); color:var(--ink-faint);
+    border:1px solid var(--line); vertical-align:middle; }
   .proj-row .pr-date { font-size:10.5px; color:var(--ink-faint); white-space:nowrap; }
   .proj-edit { border-top:1px solid var(--line); padding-top:16px; }
   .proj-edit h3 { font-size:12px; color:var(--ink-dim); margin-bottom:12px;
@@ -263,7 +263,6 @@
     <span id="progress-pct">0%</span>
   </div>
   <div class="proj-progress" id="projProgress"></div>
-  <div class="etc-count-row"><span class="etc-dot"></span><span id="etcCount">기타 일정  0 / 0</span></div>
   <div class="toolbar">
     <div class="filters" id="filters"></div>
     <div class="right-tools">
@@ -346,6 +345,10 @@
         <div class="field"><label>종료일 (선택)</label>
           <input type="date" id="p-close" min="2020-01-01" max="2030-12-31"></div>
       </div>
+      <div class="field">
+        <div class="checkbox-row"><input type="checkbox" id="p-noprog">
+          <label for="p-noprog" style="margin:0; text-transform:none; cursor:pointer;">진행률에서 제외 (전체·프로젝트별 진행률, 밀린 일정에 반영 안 됨)</label></div>
+      </div>
       <div class="modal-actions">
         <button class="btn-del" id="pDelBtn" style="display:none;">삭제</button>
         <button class="btn-cancel" id="pClearBtn">새로 입력</button>
@@ -368,7 +371,7 @@ const DEFAULT_PROJECTS = {
   news:{name:"신문박물관",color:"#5a7a9e",open:"2026-06-24",close:"2026-08-30"},
   pub:{name:"출판",color:"#c9a86a",open:"",close:""},
   field:{name:"필드트립",color:"#7d9a5b",open:"",close:""},
-  etc:{name:"기타 일정",color:"#7e8a99",open:"",close:""},
+  etc:{name:"기타 일정",color:"#7e8a99",open:"",close:"",noProgress:true},
 };
 // 기존 코드 호환용: state.projects를 바라보는 뷰
 let PROJECTS = {};
@@ -377,6 +380,11 @@ function syncProjRefs(){
   PROJECTS = state.projects || {};
   PROJ_OPEN = {};
   Object.entries(PROJECTS).forEach(([k,p])=>{ if(p.open) PROJ_OPEN[k]=p.open; });
+}
+/* 진행률 제외 여부 */
+function isNoProgress(k){
+  const p=(state.projects||{})[k];
+  return !!(p && p.noProgress);
 }
 /* 전시 목록 정렬: 개막일 빠른 순 → 개막일 없는 것은 맨 뒤(기타 일정은 항상 마지막) */
 function sortedProjects(){
@@ -475,6 +483,10 @@ function migrateState(){
   if(!state.projects || Object.keys(state.projects).length===0){
     state.projects=JSON.parse(JSON.stringify(DEFAULT_PROJECTS));
   }
+  // 기존 데이터 호환: 'etc' 전시는 진행률 제외로 표시(한 번만)
+  if(state.projects.etc && state.projects.etc.noProgress===undefined){
+    state.projects.etc.noProgress=true;
+  }
   if(!state.done) state.done={};
   if(!state.hidden) state.hidden={};
   if(!Array.isArray(state.tasks)) state.tasks=[];
@@ -551,23 +563,17 @@ function renderCommon(){
     fbox.appendChild(c);
   });
 
-  // 진행률: 기타일정(type==='etc') 제외, milestone 제외
-  const all=state.tasks.filter(t=>t.type==='task');
+  // 진행률: milestone/etc 타입 제외 + '진행률 제외' 표시된 전시 제외
+  const all=state.tasks.filter(t=>t.type==='task' && !isNoProgress(t.proj));
   const fin=all.filter(t=>state.done[t.id]).length;
   const pct=all.length?Math.round(fin/all.length*100):0;
   document.getElementById('progress-label').textContent=`전체 ${fin} / ${all.length}`;
   document.getElementById('progress-pct').textContent=pct+'%';
   document.getElementById('bar').style.width=pct+'%';
 
-  // 기타 일정 개수 (완료/전체)
-  const etcAll=state.tasks.filter(t=>t.type==='etc');
-  const etcFin=etcAll.filter(t=>state.done[t.id]).length;
-  const etcEl=document.getElementById('etcCount');
-  if(etcEl) etcEl.textContent=`기타 일정  ${etcFin} / ${etcAll.length}`;
-
   const pp=document.getElementById('projProgress'); pp.innerHTML='';
   sortedProjects().forEach(([k,p])=>{
-    if(k==='etc') return;   // 기타 일정은 진행률 패널에서 제외
+    if(isNoProgress(k)) return;   // '진행률 제외' 전시는 패널에서 제외
     const items=state.tasks.filter(t=>t.proj===k&&t.type==='task');
     if(!items.length) return;
     const f=items.filter(t=>state.done[t.id]).length;
@@ -630,7 +636,7 @@ function rowHtml(t, isOverdue){
 function overdueTasks(){
   // 밀린 일정 = 작업(task)만. 기타 일정/전시·행사는 제외
   return state.tasks
-    .filter(t=>t.type==='task' && t.date<TODAY_STR && !state.done[t.id] && !state.hidden[t.proj])
+    .filter(t=>t.type==='task' && t.date<TODAY_STR && !state.done[t.id] && !state.hidden[t.proj] && !isNoProgress(t.proj))
     .sort((a,b)=>a.date.localeCompare(b.date));
 }
 let overdueOpen=false;
@@ -863,7 +869,7 @@ function renderProjList(){
     row.className='proj-row'+(editingProj===k?' sel':'');
     const dates=p.open?(p.open.slice(5).replace('-','/')+(p.close?' – '+p.close.slice(5).replace('-','/'):'')):'';
     row.innerHTML=`<span class="pr-dot" style="background:${p.color}"></span>
-      <span class="pr-name">${p.name}</span>
+      <span class="pr-name">${p.name}${p.noProgress?'<span class="pr-np">제외</span>':''}</span>
       <span class="pr-date">${dates}</span>`;
     row.onclick=()=>{ loadProjForm(k); };
     box.appendChild(row);
@@ -877,6 +883,7 @@ function loadProjForm(k){
   document.getElementById('p-color').value=p.color||'#7d9a5b';
   document.getElementById('p-open').value=p.open||'';
   document.getElementById('p-close').value=p.close||'';
+  document.getElementById('p-noprog').checked=!!p.noProgress;
   document.getElementById('pDelBtn').style.display='inline-block';
   renderProjList();
 }
@@ -887,6 +894,7 @@ function clearProjForm(){
   document.getElementById('p-color').value='#7d9a5b';
   document.getElementById('p-open').value='';
   document.getElementById('p-close').value='';
+  document.getElementById('p-noprog').checked=false;
   document.getElementById('pDelBtn').style.display='none';
   renderProjList();
 }
@@ -908,7 +916,8 @@ document.getElementById('pSaveBtn').onclick=()=>{
     name:name,
     color:document.getElementById('p-color').value,
     open:document.getElementById('p-open').value||'',
-    close:document.getElementById('p-close').value||''
+    close:document.getElementById('p-close').value||'',
+    noProgress:document.getElementById('p-noprog').checked
   };
   if(editingProj){ state.projects[editingProj]={...state.projects[editingProj],...data}; }
   else { state.projects[slugifyProj(name)]=data; }
