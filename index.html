@@ -168,8 +168,20 @@
     align-items:center; justify-content:center; padding:20px; z-index:100; }
   .modal-bg.show { display:flex; }
   .modal { background:var(--panel); border:1px solid var(--line); border-radius:14px;
-    padding:24px; width:100%; max-width:440px; }
+    padding:24px; width:100%; max-width:440px; max-height:90vh; overflow-y:auto; }
   .modal h2 { font-family:'Gowun Batang',serif; font-size:18px; margin-bottom:18px; }
+  .proj-list { display:flex; flex-direction:column; gap:6px; margin-bottom:18px;
+    max-height:230px; overflow-y:auto; }
+  .proj-row { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px;
+    background:var(--panel2); border:1px solid transparent; cursor:pointer; font-size:12.5px; }
+  .proj-row:hover { border-color:var(--line); }
+  .proj-row.sel { border-color:var(--ydp); }
+  .proj-row .pr-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .proj-row .pr-name { flex:1; color:var(--ink); }
+  .proj-row .pr-date { font-size:10.5px; color:var(--ink-faint); white-space:nowrap; }
+  .proj-edit { border-top:1px solid var(--line); padding-top:16px; }
+  .proj-edit h3 { font-size:12px; color:var(--ink-dim); margin-bottom:12px;
+    text-transform:uppercase; letter-spacing:0.05em; }
   .field { margin-bottom:14px; }
   .field label { display:block; font-size:11px; color:var(--ink-dim); margin-bottom:5px;
     text-transform:uppercase; letter-spacing:0.05em; }
@@ -179,6 +191,8 @@
   .field textarea { resize:vertical; min-height:54px; }
   .field-row { display:flex; gap:10px; }
   .field-row .field { flex:1; }
+  .field-color { flex:0 0 90px !important; }
+  .field-color input[type=color] { height:38px; padding:2px; cursor:pointer; }
   .checkbox-row { display:flex; align-items:center; gap:8px; }
   .checkbox-row input { width:auto; }
   .modal-actions { display:flex; justify-content:flex-end; gap:9px; margin-top:20px; }
@@ -201,6 +215,19 @@
     .cell { min-height:48px; padding:4px; }
     .cell-num { font-size:10px; }
     .pp-item { min-width:0; flex:1 1 100%; }
+    /* 모달(새 일정 / 전시 관리) 모바일 대응 */
+    .modal-bg { padding:12px; align-items:flex-start; overflow-y:auto; }
+    .modal { padding:18px; max-height:calc(100vh - 24px); overflow-y:auto; margin:auto 0; }
+    .field-row { flex-direction:column; gap:0; }
+    .field-row .field { flex:1 1 auto; }
+    .field-color { flex:1 1 auto !important; }
+    .field-color input[type=color] { height:44px; }
+    .proj-list { max-height:150px; }
+    .proj-row { padding:10px; font-size:13px; }
+    .proj-row .pr-date { font-size:10px; }
+    .modal-actions { flex-wrap:wrap; }
+    .right-tools { flex-wrap:wrap; }
+    .modal-actions button { flex:1 1 auto; min-width:80px; }
   }
 </style>
 </head>
@@ -222,6 +249,7 @@
   <div class="toolbar">
     <div class="filters" id="filters"></div>
     <div class="right-tools">
+      <button class="past-toggle" id="projMgrBtn">전시 관리</button>
       <button class="past-toggle" id="pastToggle">지난 일정 숨김</button>
       <div class="view-toggle">
         <button id="viewList" class="active">목록</button>
@@ -282,18 +310,56 @@
     </div>
   </div>
 </div>
+<div class="modal-bg" id="projModalBg">
+  <div class="modal">
+    <h2>전시 관리</h2>
+    <div id="projList" class="proj-list"></div>
+    <div class="proj-edit" id="projEdit">
+      <h3 id="projEditTitle">새 전시 추가</h3>
+      <div class="field-row">
+        <div class="field"><label>전시명</label>
+          <input type="text" id="p-name" placeholder="예: 부산비엔날레"></div>
+        <div class="field field-color"><label>색상</label>
+          <input type="color" id="p-color" value="#7d9a5b"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>개막일 (선택)</label>
+          <input type="date" id="p-open" min="2020-01-01" max="2030-12-31"></div>
+        <div class="field"><label>종료일 (선택)</label>
+          <input type="date" id="p-close" min="2020-01-01" max="2030-12-31"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-del" id="pDelBtn" style="display:none;">삭제</button>
+        <button class="btn-cancel" id="pClearBtn">새로 입력</button>
+        <button class="btn-save" id="pSaveBtn">저장</button>
+      </div>
+    </div>
+    <div class="modal-actions" style="border-top:1px solid var(--line); padding-top:12px;">
+      <button class="btn-cancel" id="projCloseBtn">닫기</button>
+    </div>
+  </div>
+</div>
 <script>
-const PROJECTS = {
-  ydp:{name:"영등포",color:"#d98a3d"}, pier2:{name:"Pier-2",color:"#c5453a"},
-  songeun:{name:"송은",color:"#6fa3a0"}, mihak:{name:"미학관",color:"#b88bb0"},
-  shinchon:{name:"신촌극장",color:"#e0b94a"}, news:{name:"신문박물관",color:"#5a7a9e"},
-  pub:{name:"출판",color:"#c9a86a"}, field:{name:"필드트립",color:"#7d9a5b"},
-  etc:{name:"기타 일정",color:"#7e8a99"},
+/* 전시 인덱스 기본값 (최초 1회 시드용) — 이후에는 화면에서 추가/수정/삭제 */
+const DEFAULT_PROJECTS = {
+  ydp:{name:"영등포",color:"#d98a3d",open:"2026-09-01",close:"2026-09-20"},
+  pier2:{name:"Pier-2",color:"#c5453a",open:"2026-07-25",close:"2026-08-02"},
+  songeun:{name:"송은",color:"#6fa3a0",open:"2026-12-20",close:"2027-02-20"},
+  mihak:{name:"미학관",color:"#b88bb0",open:"2026-10-02",close:"2026-10-25"},
+  shinchon:{name:"신촌극장",color:"#e0b94a",open:"2026-12-05",close:"2026-12-12"},
+  news:{name:"신문박물관",color:"#5a7a9e",open:"2026-06-24",close:"2026-08-30"},
+  pub:{name:"출판",color:"#c9a86a",open:"",close:""},
+  field:{name:"필드트립",color:"#7d9a5b",open:"",close:""},
+  etc:{name:"기타 일정",color:"#7e8a99",open:"",close:""},
 };
-const PROJ_OPEN = {
-  news:'2026-06-24', pier2:'2026-07-25', ydp:'2026-09-01', mihak:'2026-10-02',
-  shinchon:'2026-12-05', songeun:'2026-12-20',
-};
+// 기존 코드 호환용: state.projects를 바라보는 뷰
+let PROJECTS = {};
+let PROJ_OPEN = {};
+function syncProjRefs(){
+  PROJECTS = state.projects || {};
+  PROJ_OPEN = {};
+  Object.entries(PROJECTS).forEach(([k,p])=>{ if(p.open) PROJ_OPEN[k]=p.open; });
+}
 const MONTHS={'01':'1월','02':'2월','03':'3월','04':'4월','05':'5월','06':'6월','07':'7월','08':'8월','09':'9월','10':'10월','11':'11월','12':'12월'};
 const MONTH_EN={'01':'JAN','02':'FEB','03':'MAR','04':'APR','05':'MAY','06':'JUN','07':'JUL','08':'AUG','09':'SEP','10':'OCT','11':'NOV','12':'DEC'};
 const WEEKDAYS=['일','월','화','수','목','금','토'];
@@ -330,6 +396,7 @@ async function pullCloud(){
     // X-Bin-Meta:false 이면 본문이 곧 우리 데이터
     if(data && Array.isArray(data.tasks) && data.tasks.length>0){
       state=data;
+      migrateState();
       cloudReady=true;
       localStorage.setItem(STORE,JSON.stringify(state));
       renderAll();
@@ -339,7 +406,8 @@ async function pullCloud(){
     // 클라우드가 비어있음 → 현재 로컬 데이터(기본 일정 포함)를 클라우드에 올림(최초 1회)
     cloudReady=true;
     if(!state.tasks || state.tasks.length===0){
-      state={ tasks:JSON.parse(JSON.stringify(DEFAULT_TASKS)), done:{}, hidden:{} };
+      state={ tasks:JSON.parse(JSON.stringify(DEFAULT_TASKS)), done:{}, hidden:{}, projects:JSON.parse(JSON.stringify(DEFAULT_PROJECTS)) };
+      migrateState();
       localStorage.setItem(STORE,JSON.stringify(state));
       renderAll();
     }
@@ -371,16 +439,26 @@ async function pushCloud(force){
   }
 }
 
+function migrateState(){
+  if(!state.projects || Object.keys(state.projects).length===0){
+    state.projects=JSON.parse(JSON.stringify(DEFAULT_PROJECTS));
+  }
+  if(!state.done) state.done={};
+  if(!state.hidden) state.hidden={};
+  if(!Array.isArray(state.tasks)) state.tasks=[];
+  syncProjRefs();
+}
 function load(){ try{ const s=JSON.parse(localStorage.getItem(STORE));
-    if(s&&s.tasks){ state=s; return; } }catch(e){}
-  state={ tasks:JSON.parse(JSON.stringify(DEFAULT_TASKS)), done:{}, hidden:{} }; }
+    if(s&&s.tasks){ state=s; migrateState(); return; } }catch(e){}
+  state={ tasks:JSON.parse(JSON.stringify(DEFAULT_TASKS)), done:{}, hidden:{}, projects:JSON.parse(JSON.stringify(DEFAULT_PROJECTS)) };
+  migrateState(); }
 function save(){
   try{ localStorage.setItem(STORE,JSON.stringify(state)); }catch(e){}
   // 클라우드 저장은 디바운스(연속 변경 묶어서 1.2초 후 1회 전송)
   clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>pushCloud(false),1200);
 }
-let state={ tasks:[], done:{}, hidden:{} };
+let state={ tasks:[], done:{}, hidden:{}, projects:{} };
 let viewMode='list';
 let hidePast=true;
 let calYear=TODAY.getFullYear(), calMonth=TODAY.getMonth();
@@ -415,8 +493,16 @@ function renderCommon(){
     const c=document.createElement('div');
     c.className='chip'+(state.hidden[k]?' off':'');
     let ddText='';
-    if(PROJ_OPEN[k]){ const n=daysUntil(PROJ_OPEN[k]);
-      ddText=n>0?` <span class="dd">D-${n}</span>`:(n===0?` <span class="dd">개막</span>`:` <span class="dd">진행중</span>`); }
+    if(p.open){
+      const n=daysUntil(p.open);
+      if(n>0) ddText=` <span class="dd">D-${n}</span>`;
+      else if(n===0) ddText=` <span class="dd">개막</span>`;
+      else {
+        // 개막 지남 → 종료일 확인
+        if(p.close && TODAY_STR>p.close) ddText=` <span class="dd">종료</span>`;
+        else ddText=` <span class="dd">진행중</span>`;
+      }
+    }
     c.innerHTML=`<span class="dot" style="background:${p.color}"></span>${p.name}${ddText}`;
     c.onclick=()=>{ state.hidden[k]=!state.hidden[k]; save(); renderAll(); };
     fbox.appendChild(c);
@@ -575,7 +661,18 @@ function bindRowEvents(){
     b.onclick=(e)=>{ e.stopPropagation(); openModal(b.dataset.edit); }; });
 }
 
+function rebuildProjSelect(){
+  const sel=document.getElementById('f-proj');
+  if(!sel) return;
+  const cur=sel.value;
+  sel.innerHTML='';
+  Object.entries(state.projects||{}).forEach(([k,p])=>{
+    const o=document.createElement('option'); o.value=k; o.textContent=p.name; sel.appendChild(o); });
+  if(cur && state.projects[cur]) sel.value=cur;
+}
 function renderAll(){
+  syncProjRefs();
+  rebuildProjSelect();
   renderCommon();
   if(viewMode==='list'){ renderList(); } else { renderCalendar(); }
 }
@@ -603,8 +700,6 @@ document.getElementById('nextM').onclick=()=>{ calMonth++; if(calMonth>11){ calM
 let editingId=null;
 const modalBg=document.getElementById('modalBg');
 const projSel=document.getElementById('f-proj');
-Object.entries(PROJECTS).forEach(([k,p])=>{
-  const o=document.createElement('option'); o.value=k; o.textContent=p.name; projSel.appendChild(o); });
 function openModal(id){
   editingId=id||null;
   document.getElementById('modalTitle').textContent=id?'일정 수정':'새 일정 추가';
@@ -619,7 +714,8 @@ function openModal(id){
     document.getElementById('f-note').value=t.note||'';
   } else {
     document.getElementById('f-date').value=selectedDate||TODAY_STR;
-    document.getElementById('f-proj').value='ydp';
+    const pkeys=Object.keys(state.projects||{});
+    document.getElementById('f-proj').value=state.projects['ydp']?'ydp':(pkeys[0]||'');
     document.getElementById('f-type').value='task';
     document.getElementById('f-deadline').checked=false;
     document.getElementById('f-make').checked=false;
@@ -673,9 +769,88 @@ document.getElementById('fileInput').onchange=(e)=>{
 };
 document.getElementById('reset').onclick=()=>{
   if(confirm('모든 일정을 기본값으로 되돌릴까요? (추가/수정한 내용이 사라집니다)')){
-    state={ tasks:JSON.parse(JSON.stringify(DEFAULT_TASKS)), done:{}, hidden:{} };
-    save(); renderAll(); }
+    state={ tasks:JSON.parse(JSON.stringify(DEFAULT_TASKS)), done:{}, hidden:{}, projects:JSON.parse(JSON.stringify(DEFAULT_PROJECTS)) };
+    migrateState(); save(); renderAll(); }
 };
+
+/* ===== 전시 관리 ===== */
+let editingProj=null;   // 수정 중인 전시 key (null이면 새로 추가)
+
+function slugifyProj(name){
+  let base='p'+Date.now().toString(36);
+  return base;
+}
+function renderProjList(){
+  const box=document.getElementById('projList'); box.innerHTML='';
+  Object.entries(state.projects).forEach(([k,p])=>{
+    const row=document.createElement('div');
+    row.className='proj-row'+(editingProj===k?' sel':'');
+    const dates=p.open?(p.open.slice(5).replace('-','/')+(p.close?' – '+p.close.slice(5).replace('-','/'):'')):'';
+    row.innerHTML=`<span class="pr-dot" style="background:${p.color}"></span>
+      <span class="pr-name">${p.name}</span>
+      <span class="pr-date">${dates}</span>`;
+    row.onclick=()=>{ loadProjForm(k); };
+    box.appendChild(row);
+  });
+}
+function loadProjForm(k){
+  editingProj=k;
+  const p=state.projects[k];
+  document.getElementById('projEditTitle').textContent='전시 수정';
+  document.getElementById('p-name').value=p.name||'';
+  document.getElementById('p-color').value=p.color||'#7d9a5b';
+  document.getElementById('p-open').value=p.open||'';
+  document.getElementById('p-close').value=p.close||'';
+  document.getElementById('pDelBtn').style.display='inline-block';
+  renderProjList();
+}
+function clearProjForm(){
+  editingProj=null;
+  document.getElementById('projEditTitle').textContent='새 전시 추가';
+  document.getElementById('p-name').value='';
+  document.getElementById('p-color').value='#7d9a5b';
+  document.getElementById('p-open').value='';
+  document.getElementById('p-close').value='';
+  document.getElementById('pDelBtn').style.display='none';
+  renderProjList();
+}
+document.getElementById('projMgrBtn').onclick=()=>{
+  clearProjForm();
+  document.getElementById('projModalBg').classList.add('show');
+};
+document.getElementById('projCloseBtn').onclick=()=>{
+  document.getElementById('projModalBg').classList.remove('show');
+};
+document.getElementById('projModalBg').onclick=(e)=>{
+  if(e.target.id==='projModalBg') document.getElementById('projModalBg').classList.remove('show');
+};
+document.getElementById('pClearBtn').onclick=clearProjForm;
+document.getElementById('pSaveBtn').onclick=()=>{
+  const name=document.getElementById('p-name').value.trim();
+  if(!name){ alert('전시명을 입력하세요.'); return; }
+  const data={
+    name:name,
+    color:document.getElementById('p-color').value,
+    open:document.getElementById('p-open').value||'',
+    close:document.getElementById('p-close').value||''
+  };
+  if(editingProj){ state.projects[editingProj]={...state.projects[editingProj],...data}; }
+  else { state.projects[slugifyProj(name)]=data; }
+  migrateState(); save(); renderAll(); clearProjForm();
+};
+document.getElementById('pDelBtn').onclick=()=>{
+  if(!editingProj) return;
+  const used=state.tasks.filter(t=>t.proj===editingProj).length;
+  const msg=used>0
+    ? `"${state.projects[editingProj].name}" 전시를 삭제할까요?\n이 전시에 연결된 일정 ${used}개도 함께 삭제됩니다.`
+    : `"${state.projects[editingProj].name}" 전시를 삭제할까요?`;
+  if(!confirm(msg)) return;
+  state.tasks=state.tasks.filter(t=>t.proj!==editingProj);
+  delete state.projects[editingProj];
+  delete state.hidden[editingProj];
+  migrateState(); save(); renderAll(); clearProjForm();
+};
+
 load(); renderAll();
 // 시작 시 클라우드에서 최신본 가져오기
 pullCloud();
