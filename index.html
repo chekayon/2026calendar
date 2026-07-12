@@ -24,6 +24,24 @@
   .today { font-size:12px; color:var(--ink-dim); text-align:right; }
   .today b { color:var(--ydp); font-weight:600; }
   .next-dday { color:var(--ink-dim); }
+  /* 밀린 일정 */
+  .od-badge { display:inline-flex; align-items:center; gap:5px; cursor:pointer;
+    color:var(--pier2); font-weight:600; margin-top:2px; }
+  .od-badge:hover { text-decoration:underline; }
+  .od-warn { display:inline-flex; align-items:center; justify-content:center;
+    width:14px; height:14px; border-radius:50%; background:var(--pier2); color:#fff;
+    font-size:10px; font-weight:700; flex-shrink:0; }
+  .overdue-sec { border:1px solid rgba(197,69,58,.45); border-radius:10px;
+    margin-bottom:24px; overflow:hidden; background:rgba(197,69,58,.05); }
+  .overdue-head { display:flex; align-items:center; gap:9px; padding:12px 14px;
+    cursor:pointer; user-select:none; font-size:12.5px; }
+  .overdue-head:hover { background:rgba(197,69,58,.08); }
+  .od-title { color:var(--pier2); }
+  .od-title b { font-weight:700; }
+  .od-hint { flex:1; color:var(--ink-faint); font-size:11px; }
+  .od-arrow { color:var(--pier2); font-size:10px; }
+  .overdue-body { display:none; padding:0 6px 8px; }
+  .overdue-sec.open .overdue-body { display:block; }
   .etc-count-row { display:flex; align-items:center; gap:7px; font-size:11.5px;
     color:var(--ink-faint); margin:-8px 0 20px; padding-left:2px; }
   .etc-dot { width:8px; height:8px; border-radius:50%; background:var(--etc); flex-shrink:0; }
@@ -486,7 +504,18 @@ function renderCommon(){
     const md=nx.date.slice(5,7)+'/'+nx.date.slice(8,10);
     todayHtml+='<br><span class="next-dday">다음 마감 '+dLabel+' · '+nx.title+' ('+md+')</span>';
   }
+  const odCount=overdueTasks().length;
+  if(odCount>0){
+    todayHtml+='<br><span class="od-badge" id="odBadge"><span class="od-warn">!</span>밀린 일정 '+odCount+'개</span>';
+  }
   document.getElementById('today').innerHTML=todayHtml;
+  const odb=document.getElementById('odBadge');
+  if(odb) odb.onclick=()=>{
+    if(viewMode!=='list'){ document.getElementById('viewList').click(); }
+    overdueOpen=true; renderList();
+    const sec=document.getElementById('overdueSec');
+    if(sec) sec.scrollIntoView({behavior:'smooth',block:'center'});
+  };
 
   const fbox=document.getElementById('filters'); fbox.innerHTML='';
   Object.entries(PROJECTS).forEach(([k,p])=>{
@@ -524,6 +553,7 @@ function renderCommon(){
 
   const pp=document.getElementById('projProgress'); pp.innerHTML='';
   Object.entries(PROJECTS).forEach(([k,p])=>{
+    if(k==='etc') return;   // 기타 일정은 진행률 패널에서 제외
     const items=state.tasks.filter(t=>t.proj===k&&t.type==='task');
     if(!items.length) return;
     const f=items.filter(t=>state.done[t.id]).length;
@@ -545,7 +575,7 @@ function visibleTasks(){
   return state.tasks.filter(t=>!state.hidden[t.proj] && !(hidePast && isPast(t)));
 }
 
-function rowHtml(t){
+function rowHtml(t, isOverdue){
   const p=PROJECTS[t.proj]||{name:t.proj,color:'#888'};
   const _wd=WEEKDAYS[new Date(t.date+'T00:00:00').getDay()];
   const dd=t.date.slice(5,7)+'/'+t.date.slice(8,10)+' <span class="wd">('+_wd+')</span>';
@@ -568,7 +598,11 @@ function rowHtml(t){
       <div class="row-actions"><button data-edit="${t.id}">\u270e</button></div></div>`;
   }
   const isDone=!!state.done[t.id];
-  const due=isDone?null:dueLabel(t.date);
+  let due=isDone?null:dueLabel(t.date);
+  if(isOverdue && !isDone){
+    const late=Math.abs(daysUntil(t.date));
+    due={cls:'past',txt:late+'일 지남'};
+  }
   const mk=isMake(t)?'<span class="mk">제작</span>':'';
   return `<div class="task${isDone?' done':''}${tdy}">
     <div class="check ${isDone?'on':''}" data-check="${t.id}"></div>
@@ -579,8 +613,36 @@ function rowHtml(t){
     <div class="row-actions"><button data-edit="${t.id}">\u270e</button></div></div>`;
 }
 
+function overdueTasks(){
+  // 밀린 일정 = 작업(task)만. 기타 일정/전시·행사는 제외
+  return state.tasks
+    .filter(t=>t.type==='task' && t.date<TODAY_STR && !state.done[t.id] && !state.hidden[t.proj])
+    .sort((a,b)=>a.date.localeCompare(b.date));
+}
+let overdueOpen=false;
+
 function renderList(){
   const cal=document.getElementById('listView'); cal.innerHTML='';
+
+  // ===== 밀린 일정 섹션 (맨 위, 접이식) =====
+  const od=overdueTasks();
+  if(od.length){
+    const sec=document.createElement('div');
+    sec.className='overdue-sec'+(overdueOpen?' open':'');
+    sec.id='overdueSec';
+    sec.innerHTML=`<div class="overdue-head" id="overdueHead">
+        <span class="od-warn">!</span>
+        <span class="od-title">밀린 일정 <b>${od.length}</b></span>
+        <span class="od-hint">완료되지 않은 지난 작업</span>
+        <span class="od-arrow">${overdueOpen?'▲':'▼'}</span>
+      </div>
+      <div class="overdue-body"></div>`;
+    cal.appendChild(sec);
+    const body=sec.querySelector('.overdue-body');
+    od.forEach(t=>{ body.insertAdjacentHTML('beforeend', rowHtml(t, true)); });
+    sec.querySelector('#overdueHead').onclick=()=>{ overdueOpen=!overdueOpen; renderList(); };
+  }
+
   const sorted=visibleTasks().sort((a,b)=>a.date.localeCompare(b.date));
   const byMonth={};
   sorted.forEach(t=>{ const key=t.date.slice(0,7); (byMonth[key]=byMonth[key]||[]).push(t); });
